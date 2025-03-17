@@ -22,7 +22,7 @@ result = model(input_page)
 text_output = result.export()
 
 # path export json
-file_path = "Ini_hasil_JSON/data.json"
+file_path = "json/data.json"
 
 # Export json
 with open(file_path, 'w') as f:
