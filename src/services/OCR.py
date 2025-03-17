@@ -1,33 +1,22 @@
-# LETSGOO IMPORTT
 from doctr.io import DocumentFile
-import matplotlib.pyplot as plt
-import numpy as np
 from doctr.models import ocr_predictor
-import json
 
-# Memilih model
+# Memilih model OCR
 model = ocr_predictor(det_arch='db_resnet50', reco_arch='parseq', pretrained=True)
 
-# Treshold
+# Threshold
 model.det_predictor.model.postprocessor.bin_thresh = 0.2
 model.det_predictor.model.postprocessor.box_thresh = 0.1
 
-# Input gambar
-input_page = DocumentFile.from_images("images\WhatsApp Image 2025-03-12 at 16.27.58_4c841a6d.jpg")
-
-# Processing
-result = model(input_page)
-
-# mengambil Output
-text_output = result.export()
-
-# path export json
-file_path = "json/data.json"
-
-# Export json
-with open(file_path, 'w') as f:
-    json.dump(text_output, f, indent=4)
-
-# Cek kondisi Apakah json sudah di ekstraksi
-if text_output:
-  print("Json telah di ekstraksi")
+# Fungsi untuk memproses gambar dengan OCR
+def process_ocr(image_path):
+    # Baca gambar
+    input_page = DocumentFile.from_images(image_path)
+    
+    # Proses OCR
+    result = model(input_page)
+    
+    # Ambil output dalam format JSON
+    text_output = result.export()
+    
+    return text_output  # Return Hasil OCR
