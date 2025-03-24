@@ -1,3 +1,4 @@
+import uvicorn
 from fastapi import FastAPI, HTTPException, UploadFile, File
 import shutil
 import os
