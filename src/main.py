@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from services.OCR import process_ocr
 
 TEMP_FOLDER = "public/images"
-executor = ThreadPoolExecutor(max_workers=1)  # Batasi jumlah worker
+executor = ThreadPoolExecutor(max_workers=2)  # Batasi jumlah worker
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
