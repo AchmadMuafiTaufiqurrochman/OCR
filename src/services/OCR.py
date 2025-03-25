@@ -1,10 +1,10 @@
 from onnxtr.io import DocumentFile
 from onnxtr.models import ocr_predictor, EngineConfig
 import os
-import gc  # Import Garbage Collector
+import gc
 
-def init_model():
-    """Inisialisasi model OCR dengan konfigurasi yang benar."""
+def load_model():
+    """Inisialisasi model setiap kali dipanggil agar tidak menumpuk di memori."""
     model = ocr_predictor(
         det_arch='db_resnet50',
         reco_arch='parseq',
@@ -29,19 +29,20 @@ def init_model():
     model.det_predictor.model.postprocessor.box_thresh = 0.1
     return model
 
-def process_ocr(image_path: str, model):
-    """Proses OCR dengan model yang sudah diinisialisasi."""
+def process_ocr(image_path: str):
+    """Proses OCR dengan model yang baru setiap request."""
     if not os.path.exists(image_path):
         raise FileNotFoundError("File tidak ditemukan")
 
+    model = load_model()  # Load model setiap request (menghindari memory leak)
     input_page = DocumentFile.from_images(image_path)
     result = model(input_page)
 
-    # Format hasil menjadi list per baris teks agar JSON lebih rapi
     formatted_result = result.render().split("\n")
 
-    # Paksa garbage collection setelah OCR selesai
+    # Paksa hapus model dari memori setelah digunakan
+    del model
     del result
     gc.collect()
 
-    return formatted_result  # Kembalikan hasil dalam bentuk list
+    return formatted_result  # Kembalikan list agar JSON lebih rapi
