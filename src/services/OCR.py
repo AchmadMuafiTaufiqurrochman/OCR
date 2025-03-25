@@ -1,8 +1,10 @@
 from onnxtr.io import DocumentFile
 from onnxtr.models import ocr_predictor, EngineConfig
 import os
+import gc  # Import Garbage Collector
 
 def init_model():
+    """Inisialisasi model OCR dengan konfigurasi yang benar."""
     model = ocr_predictor(
         det_arch='db_resnet50',
         reco_arch='parseq',
@@ -34,8 +36,12 @@ def process_ocr(image_path: str, model):
 
     input_page = DocumentFile.from_images(image_path)
     result = model(input_page)
-    
-    # Format hasil menjadi list berdasarkan newline
+
+    # Format hasil menjadi list per baris teks agar JSON lebih rapi
     formatted_result = result.render().split("\n")
 
-    return formatted_result  # Mengembalikan list, bukan string
+    # Paksa garbage collection setelah OCR selesai
+    del result
+    gc.collect()
+
+    return formatted_result  # Kembalikan hasil dalam bentuk list
