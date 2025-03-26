@@ -1,54 +1,58 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
-import os
-import aiofiles
+from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
-from services.OCR import process_ocr, load_model
+import asyncio
+import logging
+import os
+import gc
+from onnxtr.io import DocumentFile
+from services.OCR import ocr_model  # Import model yang sudah dimuat di docktr.py
 
-TEMP_FOLDER = "public/images"
+gc.set_threshold(300, 10, 5)
 
-# Inisialisasi model saat aplikasi startup
-ocr_model = None
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifecycle FastAPI untuk inisialisasi dan shutdown service."""
-    global ocr_model
-    ocr_model = load_model()  # Model hanya dimuat sekali saat startup
-    yield
-    del ocr_model  # Hapus model dari memori saat aplikasi shutdown
+    try:
+        logger.info("Loading OCR model...")
+        app.state.ocr_model = ocr_model  # Gunakan model yang sudah dimuat di docktr.py
+        logger.info("OCR model loaded successfully.")
+        yield
+    finally:
+        del app.state.ocr_model
+        gc.collect()
+        logger.info("Resources cleaned up.")
 
 app = FastAPI(lifespan=lifespan)
 
-@app.get("/")
-async def root():
-    return {"message": "uwu"}
-
-@app.post("/ktp")
-async def run_ocr(file: UploadFile = File(...)):
-    """API untuk menjalankan OCR pada gambar yang diunggah."""
-    temp_file_path = os.path.join(TEMP_FOLDER, file.filename)
-
+@app.post("/upload")
+async def upload(file: UploadFile = File(...)):
     try:
-        # Simpan file secara asynchronous
-        async with aiofiles.open(temp_file_path, "wb") as buffer:
-            content = await file.read()
-            await buffer.write(content)
+        file_bytes = await file.read()
+        await file.close()
 
-        # Jalankan OCR langsung, tanpa ThreadPoolExecutor
-        result = process_ocr(temp_file_path, ocr_model)
+        doc = DocumentFile.from_images([file_bytes])
+        del file_bytes
 
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="File tidak ditemukan")
+        result = await asyncio.to_thread(app.state.ocr_model, doc)
+        del doc
+
+        if isinstance(result, dict) and "error" in result:
+            error = result.get("error", "Unknown error")
+            del result
+            logger.error(f"Processing error: {error}")
+            return JSONResponse({"error": error}, status_code=500)
+
+        output = result.render().split("\n")
+        del result
+        gc.collect()
+
+        return output
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # Pastikan file selalu dihapus setelah digunakan
-        try:
-            os.remove(temp_file_path)
-        except Exception as e:
-            print(f"Error saat menghapus file: {e}")
-
-    return {
-        "status": "success",
-        "data": result
-    }
+        logger.exception("Error processing file")
+        del file
+        gc.collect()
+        return JSONResponse({"error": str(e)}, status_code=500)
