@@ -1,21 +1,21 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File
 import os
 import aiofiles
-import asyncio
-import gc
-from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
-from services.OCR import process_ocr
+from services.OCR import process_ocr, load_model
 
 TEMP_FOLDER = "public/images"
-executor = ThreadPoolExecutor(max_workers=2)  # Batasi jumlah worker
+
+# Inisialisasi model saat aplikasi startup
+ocr_model = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle FastAPI untuk inisialisasi dan shutdown service."""
+    global ocr_model
+    ocr_model = load_model()  # Model hanya dimuat sekali saat startup
     yield
-    executor.shutdown(wait=True)  # Pastikan thread pool dibersihkan setelah digunakan
-    gc.collect()  # Paksa garbage collection
+    del ocr_model  # Hapus model dari memori saat aplikasi shutdown
 
 app = FastAPI(lifespan=lifespan)
 
@@ -34,10 +34,8 @@ async def run_ocr(file: UploadFile = File(...)):
             content = await file.read()
             await buffer.write(content)
 
-        # Proses OCR secara async di thread pool agar tidak blocking
-        result = await asyncio.get_running_loop().run_in_executor(
-            executor, lambda: process_ocr(temp_file_path)
-        )
+        # Jalankan OCR langsung, tanpa ThreadPoolExecutor
+        result = process_ocr(temp_file_path, ocr_model)
 
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="File tidak ditemukan")
@@ -50,10 +48,7 @@ async def run_ocr(file: UploadFile = File(...)):
         except Exception as e:
             print(f"Error saat menghapus file: {e}")
 
-        # Paksa garbage collection
-        gc.collect()
-
     return {
         "status": "success",
-        "data": result  # JSON lebih rapi dalam bentuk list
+        "data": result
     }
