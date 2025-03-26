@@ -8,6 +8,8 @@ def load_model():
     model = ocr_predictor(
         det_arch='db_resnet50',
         reco_arch='parseq',
+        det_bs=2,
+        reco_bs=32,
         assume_straight_pages=True,
         straighten_pages=False,
         export_as_straight_boxes=False,
