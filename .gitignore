@@ -1,3 +1,5 @@
 venv/
 Ini_hasil_JSON/data.json
 src/public
+src/services/__pycache__
+src/__pycache__
