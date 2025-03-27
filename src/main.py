@@ -10,21 +10,24 @@ from onnxtr.io import DocumentFile
 from services.OCR import load_ocr_model  # Import model yang sudah dimuat di docktr.py
 from dotenv import load_dotenv
 
-# Load ENV gc treshold
-load_dotenv()
-pythongcthrd = os.getenv("PYTHONGCTHRD")
-gc.set_threshold(*map(int, pythongcthrd.split(",")))
+
 
 # Logging alakadarnya
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Konfigurasi PyTorch
-torch.set_float32_matmul_precision('high')
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
+        # Load ENV gc treshold
+        load_dotenv()
+        pythongcthrd = os.getenv("PYTHONGCTHRD")
+        gc.set_threshold(*map(int, pythongcthrd.split(",")))
+        
+        # Konfigurasi PyTorch
+        torch.set_float32_matmul_precision('high')
         logger.info("Loading OCR model...")
         with torch.inference_mode():
             app.state.ocr_model = load_ocr_model()  # Gunakan model yang sudah dimuat di docktr.py
