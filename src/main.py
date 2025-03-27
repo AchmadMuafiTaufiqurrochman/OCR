@@ -5,19 +5,26 @@ import asyncio
 import logging
 import os
 import gc
+import torch
 from onnxtr.io import DocumentFile
-from services.OCR import ocr_model  # Import model yang sudah dimuat di docktr.py
+from services.OCR import load_ocr_model  # Import model yang sudah dimuat di docktr.py
 
 gc.set_threshold(300, 10, 5)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Konfigurasi PyTorch
+torch.set_float32_matmul_precision('high')
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
         logger.info("Loading OCR model...")
-        app.state.ocr_model = ocr_model  # Gunakan model yang sudah dimuat di docktr.py
+        with torch.inference_mode():
+            app.state.ocr_model = load_ocr_model()  # Gunakan model yang sudah dimuat di docktr.py
+            app.state.ocr_model.det_predictor.model.postprocessor.bin_thresh = 0.2
+            app.state.ocr_model.det_predictor.model.postprocessor.box_thresh = 0.1
         logger.info("OCR model loaded successfully.")
         yield
     finally:
@@ -48,8 +55,10 @@ async def upload(file: UploadFile = File(...)):
         output = result.render().split("\n")
         del result
         gc.collect()
-
-        return output
+        return JSONResponse({
+            "status": "success",
+            "data": output
+        })
 
     except Exception as e:
         logger.exception("Error processing file")
