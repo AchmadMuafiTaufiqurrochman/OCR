@@ -1,15 +1,14 @@
 import os
-import gc
 from dotenv import load_dotenv
 from onnxtr.models import ocr_predictor, EngineConfig
 
 
 # Load environment variables
 load_dotenv()
-DET_ARCH = os.getenv("DET_ARCH", "db_resnet50")
-RECO_ARCH = os.getenv("RECO_ARCH", "parseq")
-DET_BS = int(os.getenv("DETECTION_BATCH_SIZE", "1"))
-RECO_BS = int(os.getenv("RECO_BATCH_SIZE", "16"))
+DET_ARCH = os.getenv("DET_ARCH")
+RECO_ARCH = os.getenv("RECO_ARCH")
+DET_BS = int(os.getenv("DETECTION_BATCH_SIZE"))
+RECO_BS = int(os.getenv("RECO_BATCH_SIZE"))
 
 # Fungsi untuk load model
 def load_ocr_model():

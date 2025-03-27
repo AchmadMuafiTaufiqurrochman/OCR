@@ -8,9 +8,14 @@ import gc
 import torch
 from onnxtr.io import DocumentFile
 from services.OCR import load_ocr_model  # Import model yang sudah dimuat di docktr.py
+from dotenv import load_dotenv
 
-gc.set_threshold(300, 10, 5)
+# Load ENV gc treshold
+load_dotenv()
+pythongcthrd = os.getenv("PYTHONGCTHRD")
+gc.set_threshold(*map(int, pythongcthrd.split(",")))
 
+# Logging alakadarnya
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
