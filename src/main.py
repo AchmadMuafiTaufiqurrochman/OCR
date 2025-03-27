@@ -42,6 +42,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
     try:
