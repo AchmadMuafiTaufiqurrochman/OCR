@@ -1,5 +1,6 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import asyncio
 import logging
@@ -25,7 +26,7 @@ async def lifespan(app: FastAPI):
         load_dotenv()
         pythongcthrd = os.getenv("PYTHONGCTHRD")
         gc.set_threshold(*map(int, pythongcthrd.split(",")))
-        
+
         # Konfigurasi PyTorch
         torch.set_float32_matmul_precision('high')
         logger.info("Loading OCR model...")
@@ -41,6 +42,15 @@ async def lifespan(app: FastAPI):
         logger.info("Resources cleaned up.")
 
 app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 
 @app.get("/")
