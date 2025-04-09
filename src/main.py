@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -10,7 +10,9 @@ import torch
 from onnxtr.io import DocumentFile
 from services.OCR import load_ocr_model  # Import model yang sudah dimuat di docktr.py
 from dotenv import load_dotenv
-
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 
 # Logging alakadarnya
@@ -43,6 +45,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# default limiter
+limiter = Limiter(key_func=get_remote_address, default_limits=["10/minute"])
+
+# deklarasi rate limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -52,13 +62,13 @@ app.add_middleware(
 )
 
 
-
 @app.get("/")
-def read_root():
+def read_root(request: Request):
     return {"Hello": "World"}
 
 @app.post("/upload")
-async def upload(file: UploadFile = File(...)):
+@limiter.limit("5/minute")
+async def upload(request: Request, file: UploadFile = File(...), ):
     try:
         file_bytes = await file.read()
         await file.close()
